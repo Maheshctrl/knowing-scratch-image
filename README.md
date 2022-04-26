@@ -1,0 +1,1 @@
+# knowing-scratch-image
