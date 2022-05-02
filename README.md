@@ -1,8 +1,22 @@
 # knowing-scratch-image
 
-Many know the [Scratch](https://hub.docker.com/_/scratch) image, but few know the details and tricks to use it correctly.
+Many know the [Scratch](https://hub.docker.com/_/scratch) image, but few know the details and tricks to use it correctly. The repository goal is to show, through commands, the mysteries the Scratch image keeps.
 
-The objective of the repository is to show, through commands, the mysteries the Scratch image keeps. You can find this image on Docker Hub.
+**Index**
+
+* [Interesting commands output](#interesting-commands-output)
+* [Create your image from scratch](#create-your-image-from-scratch)
+* [Image layers behavior](#image-layers-behavior)
+* [Access and debug images without shell](#access-and-debug-images-without-shell)
+* [Setup user non-root](#setup-user-non-root)
+
+Find this image on Docker Hub.
+
+**References**
+
+* [Inside Docker's "FROM scratch"](https://www.mgasch.com/2017/11/scratch/#how-to-access-the-scratch-container-on-osx-or-if-your-docker-engine-host-runs-on-a-remote-machine)
+* [Why Can't I Pull The Scratch Docker Image?](https://mannes.tech/docker-scratch/)
+* [Non-privileged containers based on the scratch image](https://medium.com/@lizrice/non-privileged-containers-based-on-the-scratch-image-a80105d6d341)
 
 ```
 docker search scratch --filter=is-official=true
@@ -233,5 +247,184 @@ docker image history knowing-scratch-image \
   CREATED BY                         SIZE
   ENTRYPOINT ["/app"]                0B
   COPY /go/bin/app /app # buildkit   1.81MB
+  ```
+</details>
+
+## Access and debug images without shell
+
+When the image doesn't have installed `bash`, `sh`, or some other similar tool, you will not be able to access to the container to debug your application. This is the case for images built on top of the `scratch`.
+
+Start a container from `knowing-scratch-image` image.
+
+```
+docker container run --detach knowing-scratch-image
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  460764e65f7fb1b9f9d2a8c7c720f3919b494bfae17bb89d3b482d2698faa470
+  ```
+</details>
+
+Then, try to access it
+
+```
+{
+  CONTAINER_ID=$(docker container ls --latest --quiet)
+  docker container exec -it $CONTAINER_ID bash
+}
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  OCI runtime exec failed: exec failed: container_linux.go:380: starting container process caused: exec: "bash": executable file not found in $PATH: unknown
+  ```
+</details>
+
+To solve this problem you'll need a second image with the tools to debug your app installed. Also, the container started from the second image must use the parameter `pid` to access to the process running by the image `knowing-scratch-image`.
+
+```
+docker container run --rm -it --pid container:$CONTAINER_ID ubuntu
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  root@3f165a273e85:/#
+  ```
+</details>
+
+Once inside, you can do whatever you want with the app running from `scratch`
+
+```
+ps aux
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+  root         1  0.0  0.1 702748  1100 ?        Ssl  11:00   0:00 /app    # <- app running form scratch with root user
+  root        15  0.0  0.2   3744  2848 pts/0    Ss   11:13   0:00 bash
+  root        23  0.0  0.2   5472  2280 pts/0    R+   11:15   0:00 ps aux
+  ```
+</details>
+
+## Setup user non-root
+
+No mather you built your image from scratch, you should run your app using a non-root user. This could be a problem because you don't have a command like `useradd` or `cat` to create it inside the `scratch` image.
+
+The solution is create the non-user in a previous stage in the `Dockerfile`, then copy the `/etc/passwd` to the final image. Take a look to the `Dockerfile` present in this repository.
+
+Build a new image using the same tag.
+
+```
+docker image build --no-cache \
+  --progress plain \
+  --tag knowing-scratch-image \
+  .
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  #1 [internal] load build definition from Dockerfile-simple
+  #1 sha256:79fa311d8bb2ec9185262bea7224cc6304ea30164f12da55a306b97b5e3cb0ff
+  #1 transferring dockerfile: 44B done
+  #1 DONE 0.0s
+
+  #2 [internal] load .dockerignore
+  #2 sha256:ce74d9d623a0e8ae4354557a55e4b13fb026db376ae3c8d98429eede559a6459
+  #2 transferring context: 2B done
+  #2 DONE 0.0s
+
+  #3 [internal] load metadata for docker.io/library/golang:1.18.1
+  #3 sha256:12b03ca396919374cac1f2bb4a1c46c80c15f6cef6eb69f217f095455132c948
+  #3 DONE 0.0s
+
+  #4 [builder 1/4] FROM docker.io/library/golang:1.18.1
+  #4 sha256:4ad06f069bd7e52d9fe9fb6d39bd478fa15fb210df73b45129c8c5233652c3b2
+  #4 DONE 0.0s
+
+  #5 [builder 2/4] WORKDIR /app
+  #5 sha256:87fccf2b991e137e524160caa53ff94def5eb942a93f59c0e5c16f1ec417405c
+  #5 CACHED
+
+  #6 [internal] load build context
+  #6 sha256:abe3c6c51bd8c87b69744217697efd4440b4b1ec1cb5c7d3c80ee0cefa76af10
+  #6 transferring context: 19.20kB 0.0s done
+  #6 DONE 0.0s
+
+  #7 [builder 3/4] COPY . .
+  #7 sha256:78a15e767c03c3d002c32b07707ab5c863de692fd6bc06d7bf3530479f34e970
+  #7 DONE 0.0s
+
+  #8 [builder 4/4] RUN CGO_ENABLED=0 go build -o /go/bin/app .
+  #8 sha256:b35b1357e470895f7c5ad3685dbfb6606b0b3cfc46e7b3af655aba59f5f49133
+  #8 DONE 0.3s
+
+  #9 [stage-1 1/1] COPY --from=builder /go/bin/app /app
+  #9 sha256:4def9a678dc2affecfa87d1eaa595b52822b2e3d5d7b21cd3e2e13fc972a4277
+  #9 DONE 0.0s
+
+  #10 exporting to image
+  #10 sha256:e8c613e07b0b7ff33893b694f7759a10d42e180f2b4dc349fb57dc6b71dcab00
+  #10 exporting layers 0.0s done
+  #10 writing image sha256:3fc7c254b5bd9074a2a58a69d9f80a492266d589b6267e2ca506ba14d0884f1f done
+  #10 naming to docker.io/library/knowing-scratch-image done
+  #10 DONE 0.0s
+  ```
+</details>
+
+Run a container using the image built.
+
+```
+docker container run --detach knowing-scratch-image
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  d6f930e1f595a96ca7377d692c0df4bf449eafb1de7ec7de9eb851da2235c8ee
+  ```
+</details>
+
+Access the container using a second image and check the process.
+
+```
+{
+  CONTAINER_ID=$(docker container ls --latest --quiet)
+  docker container run --rm -it --pid container:$CONTAINER_ID ubuntu
+}
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  root@d6f930e1f595:/#
+  ```
+</details>
+
+```
+ps aux
+```
+
+<details>
+  <summary>Output</summary>
+
+  ```
+  USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+  10001        1  0.0  0.1 702748  1168 ?        Ssl  11:48   0:00 /app  # <- app running form scratch with non-root user
+  root         9  0.0  0.2   3744  2992 pts/0    Ss   11:48   0:00 bash
+  root        17  0.0  0.2   5472  2276 pts/0    R+   11:48   0:00 ps aux
   ```
 </details>
