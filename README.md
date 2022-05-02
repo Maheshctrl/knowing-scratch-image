@@ -9,14 +9,9 @@ Many know the [Scratch](https://hub.docker.com/_/scratch) image, but few know th
 * [Image layers behavior](#image-layers-behavior)
 * [Access and debug images without shell](#access-and-debug-images-without-shell)
 * [Setup user non-root](#setup-user-non-root)
+* [References](#references)
 
 Find this image on Docker Hub.
-
-**References**
-
-* [Inside Docker's "FROM scratch"](https://www.mgasch.com/2017/11/scratch/#how-to-access-the-scratch-container-on-osx-or-if-your-docker-engine-host-runs-on-a-remote-machine)
-* [Why Can't I Pull The Scratch Docker Image?](https://mannes.tech/docker-scratch/)
-* [Non-privileged containers based on the scratch image](https://medium.com/@lizrice/non-privileged-containers-based-on-the-scratch-image-a80105d6d341)
 
 ```
 docker search scratch --filter=is-official=true
@@ -428,3 +423,9 @@ ps aux
   root        17  0.0  0.2   5472  2276 pts/0    R+   11:48   0:00 ps aux
   ```
 </details>
+
+## References
+
+* [Inside Docker's "FROM scratch"](https://www.mgasch.com/2017/11/scratch/#how-to-access-the-scratch-container-on-osx-or-if-your-docker-engine-host-runs-on-a-remote-machine)
+* [Why Can't I Pull The Scratch Docker Image?](https://mannes.tech/docker-scratch/)
+* [Non-privileged containers based on the scratch image](https://medium.com/@lizrice/non-privileged-containers-based-on-the-scratch-image-a80105d6d341)
