@@ -1,6 +1,6 @@
 # knowing-scratch-image
 
-Many know the [Scratch](https://hub.docker.com/_/scratch) image, but few know the details and tricks to use it correctly. The repository goal is to show, through commands, the mysteries the Scratch image keeps.
+The [scratch image](https://hub.docker.com/_/scratch) is well known in the community, but just a few know the details and tricks to use it correctly. This repository will show you, through commands, the mysteries the scratch image keeps
 
 **Index**
 
